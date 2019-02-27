@@ -99,7 +99,7 @@ W = tf.get_variable("W", shape=[n_dim,n_class], initializer = tf.zeros_initializ
 b = tf.get_variable("b", shape=[n_class], initializer = tf.zeros_initializer())
 
 
-# In[13]:
+# In[12]:
 
 
 x = tf.placeholder(tf.float32,[None,n_dim],name = 'x')
@@ -108,13 +108,13 @@ y_ = tf.placeholder(tf.float32,[None,n_class],name = "y_")
 y = tf.nn.softmax(tf.matmul(x, W)+ b,name = "y")
 
 
-# In[15]:
+# In[13]:
 
 
 export_path = "./model/1"
 
 with tf.Session(graph=tf.Graph()) as sess:
-    tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.TRAINING], export_path)
+    tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], export_path)
     graph = tf.get_default_graph()
 
     pred_y = sess.run("y:0", feed_dict={"x:0": X})

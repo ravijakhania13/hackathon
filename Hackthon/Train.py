@@ -158,7 +158,7 @@ Accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100
 print("Accuracy:",sess.run(Accuracy))
 
 
-# In[18]:
+# In[17]:
 
 
 
@@ -168,7 +168,7 @@ prediction_signature = (tf.saved_model.signature_def_utils.build_signature_def(
     method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME))
 
 builder.add_meta_graph_and_variables(
-    sess, [tf.saved_model.tag_constants.TRAINING],
+    sess, [tf.saved_model.tag_constants.SERVING],
     signature_def_map={"model": prediction_signature,},saver=saver)
 
 builder.save()
