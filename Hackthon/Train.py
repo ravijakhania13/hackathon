@@ -4,8 +4,6 @@
 # In[1]:
 
 
-#import the required libraries
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -21,13 +19,6 @@ from tensorflow.python.tools import inspect_checkpoint as chkp
 # In[2]:
 
 
-# model_path = "./../output_data/model_output.ckpt"
-
-
-# In[3]:
-
-
-#define the one hot encode function
 def one_hot_encode(labels):
     n_labels = len(labels)
     n_unique_labels = len(np.unique(labels))
@@ -36,36 +27,33 @@ def one_hot_encode(labels):
     return one_hot_encode
 
 
+# In[3]:
+
+
+df = pd.read_csv('Sonar.csv')
+# print(len(df.columns))
+X = df[df.columns[0:60]].values
+y = df[df.columns[60]]
+
+
 # In[4]:
 
 
-#Read the sonar dataset
-df = pd.read_csv('creditcard.csv')
-# print(len(df.columns))
-X = df[df.columns[0:30]].values
-y = df[df.columns[30]]
-
-
-# In[5]:
-
-
-#encode the dependent variable containing categorical values
 encoder = LabelEncoder()
 encoder.fit(y)
 y = encoder.transform(y)
 Y = one_hot_encode(y)
 
 
-# In[6]:
+# In[5]:
 
 
-#Transform the data in training and testing
 X,Y = shuffle(X,Y,random_state=1)
 train_x,test_x,train_y,test_y = train_test_split(X,Y,test_size=0.20, random_state=42)
 train_x.shape[0]
 
 
-# In[7]:
+# In[6]:
 
 
 #define and initialize the variables to work with the tensors
@@ -73,14 +61,14 @@ learning_rate = 0.1
 training_epochs = 50
 
 
-# In[8]:
+# In[7]:
 
 
 #Array to store cost obtained in each epoch
 cost_history = np.empty(shape=[1],dtype=float)
 
 
-# In[9]:
+# In[8]:
 
 
 n_dim = X.shape[1]
@@ -88,33 +76,50 @@ n_class = 2
 n_ans = 1
 
 
-# In[10]:
+# In[9]:
 
 
-x = tf.placeholder(tf.float32,[None,n_dim],name = 'x')
-W = tf.Variable(tf.zeros([n_dim,n_class]),name = 'W')
-b = tf.Variable(tf.zeros([n_class]),name='b')
+x = tf.placeholder(tf.float32,[None,n_dim],name ="x")
+y_ = tf.placeholder(tf.float32,[None,n_class],name ="y_")
+# W = tf.Variable(tf.zeros([n_dim,n_class]),name = 'W')
+# b = tf.Variable(tf.zeros([n_class]),name='b')
+W = tf.get_variable("W",[n_dim,n_class],initializer=tf.zeros_initializer())
+b = tf.get_variable("b",[n_class],initializer=tf.zeros_initializer())
 Accuracy = tf.Variable(tf.zeros([1],dtype=tf.float32),name = 'Accuracy')
-# print (Accuracy[0])
-# Accuracy = tf.placeholder(tf.float32,[None,n_ans],name = "Accuracy")
 
 
-# In[11]:
+# In[10]:
 
 
 #initialize all variables.
 init = tf.global_variables_initializer()
 
 
-# In[12]:
+# In[11]:
 
 
 #define the cost function
-y_ = tf.placeholder(tf.float32,[None,n_class],name = "y_")
 y = tf.nn.softmax(tf.matmul(x, W)+ b,name = "y")
-# cost_function = tf.reduce_sum(tf.square(y_ - y))
 cost_function = tf.reduce_mean(-tf.reduce_sum((y_ * tf.log(y)),reduction_indices=[1]))
 training_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost_function)
+
+
+# In[12]:
+
+
+#TensorServing model
+
+# tf.app.flags.DEFINE_integer('model_version', 1, 'version number of the model.')
+FLAGS = tf.app.flags.FLAGS
+
+# export_path = "./model/1" + str(FLAGS.model_version)
+export_path = "./model/1"
+print("Exporting trained model to ", export_path)
+
+builder = tf.saved_model.builder.SavedModelBuilder(export_path)
+
+tensor_info_x = tf.saved_model.utils.build_tensor_info(x)
+tensor_info_y = tf.saved_model.utils.build_tensor_info(y)
 
 
 # In[13]:
@@ -135,65 +140,35 @@ for epoch in range(training_epochs):
     sess.run(training_step,feed_dict={x:train_x,y_:train_y})
     cost = sess.run(cost_function,feed_dict={x: train_x,y_: train_y})
     cost_history = np.append(cost_history,cost)
-#     print('epoch : ', epoch,  ' - ', 'cost: ', cost)
 
 
 # In[15]:
 
 
-# print("Accuracy:",sess.run(Accuracy))
+pred_y = sess.run(y, feed_dict={x: test_x})
 
 
 # In[16]:
 
 
-pred_y = sess.run(y, feed_dict={x: test_x})
-
-
-# In[17]:
-
-
 #Calculate Accuracy
 correct_prediction = tf.equal(tf.argmax(pred_y,1), tf.argmax(test_y,1))
-# op = Accuracy.assign(tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100)
-# Accuracy.load(tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100, sess)
-# Accuracy.assign(Accuracy + (tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100))
-# print (sess.run(Accuracy.initializer))
-# Accuracy = tf.Variable(tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100,name = "Accuracy")
 Accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100
-# sess.run(op)
+
 print("Accuracy:",sess.run(Accuracy))
 
 
 # In[18]:
 
 
-saver.save(sess, './model/train_data')
-# sess.close()
-# save_path = saver.save(sess,model_path)
-# print("Model saved to file: %s " % save_path)
 
+prediction_signature = (tf.saved_model.signature_def_utils.build_signature_def(
+    inputs={"x": tensor_info_x},
+    outputs={"y": tensor_info_y},
+    method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME))
 
-# In[19]:
+builder.add_meta_graph_and_variables(
+    sess, [tf.saved_model.tag_constants.TRAINING],
+    signature_def_map={"model": prediction_signature,},saver=saver)
 
-
-# chkp.print_tensors_in_checkpoint_file(model_path, tensor_name='W2', all_tensors=True)
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
+builder.save()

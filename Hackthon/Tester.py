@@ -21,14 +21,14 @@ from tensorflow.python.tools import inspect_checkpoint as chkp
 # In[2]:
 
 
-model_path = "./../output_data/model_output"
+# model_path = "./../output_data/model_output"
 
 
 # In[3]:
 
 
-Path = sys.argv[1]
-# Path = "./creditcard.csv"
+# = sys.argv[1]
+Path = "./Sonar.csv"
 
 
 # In[4]:
@@ -46,17 +46,15 @@ def one_hot_encode(labels):
 # In[5]:
 
 
-#Read the sonar dataset
 df = pd.read_csv(Path)
 # print(len(df.columns))
-X = df[df.columns[0:30]].values
-y = df[df.columns[30]]
+X = df[df.columns[0:60]].values
+y = df[df.columns[60]]
 
 
 # In[6]:
 
 
-#encode the dependent variable containing categorical values
 encoder = LabelEncoder()
 encoder.fit(y)
 y = encoder.transform(y)
@@ -97,19 +95,8 @@ n_ans = 1
 # In[11]:
 
 
-# x = tf.get_variable("x", shape=[X.shape[0],n_dim], initializer = tf.zeros_initializer())
-# x = tf.placeholder(tf.float32,[None,n_dim],name = 'x')
 W = tf.get_variable("W", shape=[n_dim,n_class], initializer = tf.zeros_initializer())
 b = tf.get_variable("b", shape=[n_class], initializer = tf.zeros_initializer())
-# Accuracy = tf.get_variable("Accuracy", shape=[1], initializer = tf.zeros_initializer())
-# print (Accuracy[0])
-# Accuracy = tf.placeholder(tf.float32,[None,n_ans],name = "Accuracy")
-
-
-# In[12]:
-
-
-saver = tf.train.Saver()
 
 
 # In[13]:
@@ -121,43 +108,21 @@ y_ = tf.placeholder(tf.float32,[None,n_class],name = "y_")
 y = tf.nn.softmax(tf.matmul(x, W)+ b,name = "y")
 
 
-# In[14]:
+# In[15]:
 
 
-with tf.Session() as sess:
-    saver = tf.train.import_meta_graph('./model/train_data.meta')
-    saver.restore(sess,tf.train.latest_checkpoint('./model/'))
-#     saver.restore(sess, "/tmp/h/model.ckpt")
-#     print("Model restored.")
-    # Check the values of the variables
-#     print(W2.eval())
-#     test = fashion_mnist.test
-    pred_y = sess.run(y, feed_dict={x: X})
+export_path = "./model/1"
+
+with tf.Session(graph=tf.Graph()) as sess:
+    tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.TRAINING], export_path)
+    graph = tf.get_default_graph()
+
+    pred_y = sess.run("y:0", feed_dict={"x:0": X})
     correct_prediction = tf.equal(tf.argmax(pred_y,1), tf.argmax(Y,1))
     Accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100
-# sess.run(op)
-#     print (pred_y)
+
     print("Accuracy:",sess.run(Accuracy))
-#     (n_x, m) = test.images.T.shape
-#     n_y = test.labels.T.shape[0]
-#     X, Y = create_placeholders(n_x, n_y)
-#     Z3 = forward_propagation(X,W1,W2,W3,b1,b2,b3)
-    
-#     correct_prediction = tf.equal(tf.argmax(Z3), tf.argmax(Y))
-    
-#     accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-    
-#     print ("Test Accuracy:", accuracy.eval({X: test.images.T, Y: test.labels.T}))
-
-
-# In[ ]:
-
-
 
 
 
 # In[ ]:
-
-
-
-
